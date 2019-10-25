@@ -1,0 +1,10 @@
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\SSDProject.exe.config
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\SSDProject.exe
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\SSDProject.pdb
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\obj\Debug\SSDProject.csprojResolveAssemblyReference.cache
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\obj\Debug\SSDProject.exe
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\obj\Debug\SSDProject.pdb
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\CsvHelper.dll
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\System.ValueTuple.dll
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\CsvHelper.xml
+C:\Users\Mark\Documents\GitHub\SSDProject\SSDProject\bin\Debug\System.ValueTuple.xml
