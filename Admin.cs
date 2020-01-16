@@ -6,19 +6,21 @@ using System.Threading.Tasks;
 
 namespace SSDProject
 {
-    class Admin:User
+    sealed class Admin:User
     {
-        public Admin()
-        {
 
-        }
-        public Admin(string username, string password)
-        {
-            Random random = new Random();
+        public readonly int Id;
 
-            this.Id = random.Next();
-            this.Username = Username;
+        public readonly string Username;
+
+        public readonly string Password;
+
+        public Admin(int id,string username, string password)
+        {
+            this.Id = id;
+            this.Username = username;
             this.Password = password;
         }
+        
     }
 }

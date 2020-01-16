@@ -5,18 +5,27 @@ using System.Text;
 using System.Threading.Tasks;
 using CsvHelper;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace SSDProject
 {
     class Program
     {
+        public const int SaltByteSize = 24;
+        public const int HashByteSize = 20; // to match the size of the PBKDF2-HMAC-SHA-1 hash 
+        public const int Pbkdf2Iterations = 1000;
+        public const int IterationIndex = 0;
+        public const int SaltIndex = 1;
+        public const int Pbkdf2Index = 2;
+
+        private static Random random = new Random();
         static void Main(string[] args)
         {
             MainMenu();
         }
         static void MainMenu()
         {
-            String[] menu = new String[] { "Admin Login", "Admin Sign Up (Testing Purposes Only)", "Login", "Sign Up" };
+            String[] menu = new String[] { "Admin Login", "Admin Sign Up (Testing Purposes Only)", "Login", "Sign Up"};
 
             for (int i = 0; i < menu.Length; i++)
             {
@@ -34,10 +43,10 @@ namespace SSDProject
                     AdminSignUp();
                     break;
                 case "3":
-                    Login();
+                    MemberLogin();
                     break;
                 case "4":
-                    SignUp();                 
+                    SignUpMembers();                 
                     break;
                 default:
                     Console.WriteLine("Please Enter a vaild option");
@@ -53,41 +62,34 @@ namespace SSDProject
             Console.WriteLine("Please Enter your Password");
             string password = Console.ReadLine();
 
-            using (var reader = new StreamReader("../Admins.csv"))
-            using (var csv = new CsvReader(reader))
+            List<Admin> records = ReadAdmins();
+            Admin admin = records.Find(a => a.Username == username);
+            if (ValidatePassword(password, admin.Password))
             {
-                var record = new Admin();
-                csv.Configuration.HasHeaderRecord = false;
-                var records = csv.EnumerateRecords(record);
-                foreach (var r in records)
-                {
-                    if (r.Username == username && r.Password == password)
-                    {
-                        Menu(String.Concat(r.GetType()));
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invaild Username or Password try again");
-                        Login();
-                    }
-                }
+                Menu("Admin");
+            }
+            else
+            {
+                Console.WriteLine("Invaild Username or Password try again");
+                AdminLogin();
             }
         }
         static void AdminSignUp()
         {
+            List<Admin> records = new List<Admin>();
+
             Console.WriteLine("Please Enter a Username");
             string username = Console.ReadLine();
 
             Console.WriteLine("Please Enter a Password");
             string password = Console.ReadLine();
+            password = CreateHash(password);
+            records.Add(new Admin(random.Next(),username, password));
 
-            using (var writer = new StreamWriter("../Admins.csv"))
-            using (var csv = new CsvWriter(writer))
-            {
-                csv.WriteRecord(new Admin(username, password));
-            }
+            WriteAdminsToFile(records);
+            MainMenu();
         }
-        static void Login()
+        static void MemberLogin()
         {
             Console.WriteLine("Please Enter your Username");
             string username = Console.ReadLine();
@@ -95,46 +97,38 @@ namespace SSDProject
             Console.WriteLine("Please Enter your Password");
             string password = Console.ReadLine();
 
-            using (var reader = new StreamReader("../Users.csv"))
-            using (var csv = new CsvReader(reader))
+            List<Member> records = ReadMembers();
+            Member member = records.Find(m => m.Username == username);
+
+            if (ValidatePassword(password,member.Password))
             {
-                var record = new Member();
-                csv.Configuration.HasHeaderRecord = false;
-                var records = csv.EnumerateRecords(record);
-                foreach (var r in records)
-                {
-                    if(r.Username==username && r.Password == password)
-                    {
-                        Menu(String.Concat(r.GetType()));
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invaild Username or Password try again");
-                        Login();
-                    }
-                }
+                Menu("Member");
+            }
+            else
+            {
+                Console.WriteLine("Invaild Username or Password try again");
+                MemberLogin();
             }
         }
-        static void SignUp()
+        static void SignUpMembers()
         {
+            List<Member> records = new List<Member>();
             Console.WriteLine("Please Enter a Username");
             string username= Console.ReadLine();
 
             Console.WriteLine("Please Enter a Password");
             string password = Console.ReadLine();
+            password = CreateHash(password);
+            records.Add(new Member(random.Next(), username, password));
 
-            using (var writer = new StreamWriter("../Users.csv"))
-            using (var csv = new CsvWriter(writer))
-            {
-                csv.WriteRecord(new Member(username, password));
-            }
-
+            WriteMembersToFile(records);
+            MainMenu();
         }
         static void Menu(string privilege)
         {
             if (privilege == "Admin")
             {
-                String[] menu = new String[] { "Create", "Read", "Update", "Delete" };
+                String[] menu = new String[] { "Create new Fitness Plan", "Read Fitness Plans", "Update a Fitness Plan", "Delete a Fitness Plan" };
 
                 for (int i = 0; i < menu.Length; i++)
                 {
@@ -145,16 +139,17 @@ namespace SSDProject
 
                 switch (userInput)
                 {
-                    case "0":
-                        Create();
-                        break;
                     case "1":
-                        Read();
+                        CreateFitnessPlan(privilege);
                         break;
                     case "2":
-                        Update();
+                        ReadFitnessPlans(privilege);
                         break;
                     case "3":
+                        UpdateFitnessPlans(privilege);
+                        break;
+                    case "4":
+                        DeletePlan(privilege);
                         break;
                     default:
                         Console.WriteLine("Please enter a vaild number");
@@ -164,7 +159,7 @@ namespace SSDProject
             }
             else
             {
-                String[] menu = new String[] { "Read"};
+                String[] menu = new String[] { "Read Fitness Plan","Logout"};
                 for (int i = 0; i < menu.Length; i++)
                 {
                     Console.WriteLine("{0}.{1}", i + 1, menu[i]);
@@ -174,37 +169,293 @@ namespace SSDProject
 
                 switch (userInput)
                 {
-                    case "0":
-                        Create();
+                    case "1":
+                        ReadFitnessPlans(privilege);
+                        break;
+                    case "2":
+                        MainMenu();
                         break;
                     default:
                         Console.WriteLine("Please enter a vaild number");
                         Menu(privilege);
                         break;
                 }
-            }
+            }   
+        }
+        static void CreateFitnessPlan(string priv)
+        {
+            List <FitnessPlan> records= new List<FitnessPlan>();
+            
+            Console.WriteLine("Enter the length of the run");
+            int runLength = int.Parse(Console.ReadLine());
 
+            Console.WriteLine("Enter the number of push ups");
+            int numPushUps = int.Parse(Console.ReadLine());
+
+            Console.WriteLine("Enter the number of squats");
+            int numSquats = int.Parse(Console.ReadLine());
+
+            records.Add(new FitnessPlan(random.Next(),runLength, numPushUps, numSquats));
+
+            WritePlansToFile(records);
+            Menu(priv);
+        }
+        static void ReadFitnessPlans(string priv)
+        {
+            List<FitnessPlan> records = ReadPlans();
+            foreach (var r in records)
+            {
+                Console.WriteLine(r.ToString());
+            }
+            Menu(priv);
+        }
+        static void UpdateFitnessPlans(string priv)
+        {
+            List<FitnessPlan> records = ReadPlans();
+            int lengthOfRun;
+            int numberOfPushUps;
+            int numberOfSquats;
+            Console.WriteLine("Enter the ID of the plan you wish to update");
+            int Id = int.Parse(Console.ReadLine());
+            
+            if (records.Find(fp => fp.Id == Id) != null)
+            {
+                FitnessPlan oldPlan =records.Find(fp => fp.Id == Id);
+
+                Console.WriteLine("Enter the length of the new run currently:{0}", oldPlan.LengthOfRun);
+                lengthOfRun = int.Parse(Console.ReadLine());
+
+                Console.WriteLine("Enter the number of push ups currently:{0}", oldPlan.NumberOfPushUps);
+                numberOfPushUps = int.Parse(Console.ReadLine());
+
+                Console.WriteLine("Enter the number of squats currently:{0}", oldPlan.NumberOfSquats);
+                numberOfSquats = int.Parse(Console.ReadLine());
+
+                FitnessPlan newPlan = new FitnessPlan(oldPlan.Id,lengthOfRun,numberOfPushUps,numberOfSquats);
+
+                records.Remove(oldPlan);
+                records.Add(newPlan);
+            }
+            else
+            {
+                Console.WriteLine("Plan not found try agian");
+                Menu(priv);
+            }
+           
+            OverWritePlansToFile(records);
+            Menu(priv);
+        }
+        static void DeletePlan(string priv)
+        {
+            var records = ReadPlans();
+
+            Console.WriteLine("Enter the ID of the plan you wish to delete");
+            int Id = int.Parse(Console.ReadLine());
+            FitnessPlan entry = records.Find(fp => fp.Id == Id);
+            records.Remove(entry);
+            OverWritePlansToFile(records);
+            Menu(priv);
+        }
+        static void WriteMembersToFile(List<Member> data)
+        {
+            FileStream fs = new FileStream("../Users.csv", FileMode.Append);
+
+            Console.WriteLine("File opened");
+
+            var writer = new StreamWriter(fs);
+            foreach(dynamic entry in data)
+            {
+                writer.WriteLine(entry.ToFileFormat());
+            }
+            Console.WriteLine("Data wrote to file");
+            writer.Close();
+            fs.Close();
+        }
+        static void WriteAdminsToFile(List<Admin> data)
+        {
+            FileStream fs = new FileStream("../Admins.csv", FileMode.Append);
+
+            Console.WriteLine("File opened");
+
+            var writer = new StreamWriter(fs);
+            foreach (dynamic entry in data)
+            {
+                writer.WriteLine(entry.ToFileFormat());
+            }
+            Console.WriteLine("Data wrote to file");
+            writer.Close();
+            fs.Close();
+        }
+        static void WritePlansToFile(List<FitnessPlan> data)
+        {
+            FileStream fs = new FileStream("../Plans.csv", FileMode.Append);
+
+            Console.WriteLine("File opened");
+
+            var writer = new StreamWriter(fs);
+            foreach (dynamic entry in data)
+            {
+                writer.WriteLine(entry.ToFileFormat());
+            }
+            Console.WriteLine("Data wrote to file");
+            writer.Close();
+            fs.Close();
+        }
+        static void OverWritePlansToFile(List<FitnessPlan> data)
+        {
+            FileStream fs = new FileStream("../Plans.csv", FileMode.Create);
+
+            Console.WriteLine("File opened");
+
+            var writer = new StreamWriter(fs);
+            if (data.Count != 0) {
+                foreach (dynamic entry in data)
+                {
+                    writer.WriteLine(entry.ToFileFormat());
+                    Console.WriteLine("Data overwrote to file");
+                }
+            }
+            else
+            {
+                writer.WriteLine();
+            }
+            writer.Close();
+            fs.Close();
+        }
+        static List<Member> ReadMembers()
+        {
+            List<Member> data = new List<Member>();
+            string path = "../Users.csv";
+            if (File.Exists(path) && new System.IO.FileInfo(path).Length != 0)
+            {
+                FileStream fs = new FileStream("../Users.csv", FileMode.OpenOrCreate);
+                using (var reader = new StreamReader(fs))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        var line = reader.ReadLine();
+                        var values = line.Split(',');
+
+                        int id = int.Parse(values[0]);
+                        string username = values[1];
+                        string password = values[2];
+
+                        Member m = new Member(id, username, password);
+                        data.Add(m);
+                    }
+                }
+                fs.Close();
+                return data;
+            }
+            else
+            {
+                return data;
+            }
+        }
+        static List<Admin> ReadAdmins()
+        {
+            List<Admin> data = new List<Admin>();
+            string path = "../Admins.csv";
+            if (File.Exists(path) && new System.IO.FileInfo(path).Length != 0)
+            {
+                FileStream fs = new FileStream(path, FileMode.OpenOrCreate);
+                using (var reader = new StreamReader(fs))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        var line = reader.ReadLine();
+                        var values = line.Split(',');
+
+                        int id = int.Parse(values[0]);
+                        string username = values[1];
+                        string password = values[2];
+
+                        Admin a = new Admin(id, username, password);
+                        data.Add(a);
+                    }
+                }
+                fs.Close();
+                return data;
+            }
+            else
+            {
+                return data;
+            }
+           
+        }
+        static List<FitnessPlan> ReadPlans()
+        {
+            List<FitnessPlan> data = new List<FitnessPlan>();
+            string path = "../Plans.csv";
+            if (File.Exists(path) && new System.IO.FileInfo(path).Length!=0) {
+                FileStream fs = new FileStream(path, FileMode.OpenOrCreate);
+                using (var reader = new StreamReader(fs))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        var line = reader.ReadLine();
+                        var values = line.Split(',');
+
+                        int id = int.Parse(values[0]);
+                        DateTime planDate = DateTime.Parse(values[1]);
+                        int lengthOfRun = int.Parse(values[2]);
+                        int numberOfPushUps = int.Parse(values[3]);
+                        int numberOfSquats = int.Parse(values[4]);
+
+                        FitnessPlan fp = new FitnessPlan(id, planDate, lengthOfRun, numberOfPushUps, numberOfSquats);
+                        data.Add(fp);
+                    }
+                    fs.Close();
+                }
+                return data;
+            }
+            else
+            {
+                Console.WriteLine("There are no entries yet");
+                return data;
+            }
             
         }
-        static void Create()
+       
+        public static string CreateHash(string password)
         {
-            Console.WriteLine("Please enter your text");
-            string value = Console.ReadLine();
-            System.IO.File.AppendAllText(@"C:\Users\Mark\Documents\WriteText.txt", value);
-        }
-        static void Read()
-        {
-            String[] lines = System.IO.File.ReadAllLines(@"C:\Users\Mark\Documents\WriteText.txt");
+            var cryptoProvider = new RNGCryptoServiceProvider();
+            byte[] salt = new byte[SaltByteSize];
+            cryptoProvider.GetBytes(salt);
 
-            for (int i = 0; i < lines.Length; i++)
+            var hash = GetPbkdf2Bytes(password, salt, Pbkdf2Iterations, HashByteSize);
+            GC.Collect();
+            return Pbkdf2Iterations + ":" +
+                   Convert.ToBase64String(salt) + ":" +
+                   Convert.ToBase64String(hash);
+        }
+        public static bool ValidatePassword(string password, string correctHash)
+        {
+            char[] delimiter = { ':' };
+            var split = correctHash.Split(delimiter);
+            var iterations = Int32.Parse(split[IterationIndex]);
+            var salt = Convert.FromBase64String(split[SaltIndex]);
+            var hash = Convert.FromBase64String(split[Pbkdf2Index]);
+
+            var testHash = GetPbkdf2Bytes(password, salt, iterations, hash.Length);
+            return SlowEquals(hash, testHash);
+        }
+        private static byte[] GetPbkdf2Bytes(string password, byte[] salt, int iterations, int outputBytes)
+        {
+            var pbkdf2 = new Rfc2898DeriveBytes(password, salt)
             {
-                Console.WriteLine("{0}.{1}", i, lines[i]);
-            }
+                IterationCount = iterations
+            };
+            return pbkdf2.GetBytes(outputBytes);
         }
-        static void Update()
+        private static bool SlowEquals(byte[] a, byte[] b)
         {
-
-
+            var diff = (uint)a.Length ^ (uint)b.Length;
+            for (int i = 0; i < a.Length && i < b.Length; i++)
+            {
+                diff |= (uint)(a[i] ^ b[i]);
+            }
+            return diff == 0;
         }
     }
 }

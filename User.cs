@@ -6,12 +6,17 @@ using System.Threading.Tasks;
 
 namespace SSDProject
 {
-    class User
+    abstract class User
     {
-        public int Id { get; set; }
+        private readonly int Id;
 
-        public string Username { get; set; }
+        private readonly string Username;
 
-        public string Password { get; set; }
+        private readonly string Password;
+
+        protected String ToFileFormat()
+        {
+            return (string.Format("{0},{1},{2}", this.Id, this.Username, this.Password));
+        }
     }
 }
