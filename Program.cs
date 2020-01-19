@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CsvHelper;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 
 namespace SSDProject
 {
@@ -33,7 +34,6 @@ namespace SSDProject
             }
             Console.WriteLine("Enter your option");
             string userInput = Console.ReadLine();
-
             switch (userInput)
             {
                 case "1":
@@ -62,16 +62,24 @@ namespace SSDProject
             Console.WriteLine("Please Enter your Password");
             string password = Console.ReadLine();
 
-            List<Admin> records = ReadAdmins();
-            Admin admin = records.Find(a => a.Username == username);
-            if (ValidatePassword(password, admin.Password))
+            if (Regex.IsMatch(username, "^[A-z,0-9]{1,35}") && Regex.IsMatch(password, "^[A-z,0-9]{1,35}"))
             {
-                Menu("Admin");
+                List<Admin> records = ReadAdmins();
+                Admin admin = records.Find(a => a.Username == username);
+                if (ValidatePassword(password, admin.Password))
+                {
+                    Menu("Admin");
+                }
+                else
+                {
+                    Console.WriteLine("Invaild Username or Password try again");
+                    AdminLogin();
+                }
             }
             else
             {
-                Console.WriteLine("Invaild Username or Password try again");
-                AdminLogin();
+                Console.WriteLine("Please enter a vaild username/password");
+                MainMenu();
             }
         }
         static void AdminSignUp()
@@ -83,10 +91,17 @@ namespace SSDProject
 
             Console.WriteLine("Please Enter a Password");
             string password = Console.ReadLine();
-            password = CreateHash(password);
-            records.Add(new Admin(random.Next(),username, password));
+            if (Regex.IsMatch(username, "^[A-z,0-9]{1,35}") && Regex.IsMatch(password, "^[A-z,0-9]{1,35}"))
+            {
+                password = CreateHash(password);
+                records.Add(new Admin(random.Next(), username, password));
 
-            WriteAdminsToFile(records);
+                WriteAdminsToFile(records);
+            }
+            else
+            {
+                Console.WriteLine("Plese Enter a vaild username/password");
+            }
             MainMenu();
         }
         static void MemberLogin()
@@ -97,18 +112,25 @@ namespace SSDProject
             Console.WriteLine("Please Enter your Password");
             string password = Console.ReadLine();
 
-            List<Member> records = ReadMembers();
-            Member member = records.Find(m => m.Username == username);
-
-            if (ValidatePassword(password,member.Password))
+            if (Regex.IsMatch(username, "^[A-z,0-9]{1,35}") && Regex.IsMatch(password, "^[A-z,0-9]{1,35}"))
             {
-                Menu("Member");
+                List<Member> records = ReadMembers();
+                Member member = records.Find(m => m.Username == username);
+
+                if (ValidatePassword(password, member.Password))
+                {
+                    Menu("Member");
+                }
+                else
+                {
+                    Console.WriteLine("Invaild Username or Password try again");
+                    MemberLogin();
+                }
             }
             else
             {
-                Console.WriteLine("Invaild Username or Password try again");
-                MemberLogin();
-            }
+                Console.WriteLine("Please enter a vaild username/password");
+            }    
         }
         static void SignUpMembers()
         {
@@ -118,10 +140,19 @@ namespace SSDProject
 
             Console.WriteLine("Please Enter a Password");
             string password = Console.ReadLine();
-            password = CreateHash(password);
-            records.Add(new Member(random.Next(), username, password));
 
-            WriteMembersToFile(records);
+            if (Regex.IsMatch(username, "^[A-z,0-9]{1,35}") && Regex.IsMatch(password, "^[A-z,0-9]{1,35}"))
+            {
+                password = CreateHash(password);
+                records.Add(new Member(random.Next(), username, password));
+
+                WriteMembersToFile(records);
+            }
+            else
+            {
+                Console.WriteLine("Please enter a vaild username/password");
+            }
+            
             MainMenu();
         }
         static void Menu(string privilege)
@@ -184,16 +215,31 @@ namespace SSDProject
         }
         static void CreateFitnessPlan(string priv)
         {
+            int runLength = 0;
+            int numPushUps = 0;
+            int numSquats = 0;
             List <FitnessPlan> records= new List<FitnessPlan>();
             
             Console.WriteLine("Enter the length of the run");
-            int runLength = int.Parse(Console.ReadLine());
+            while (!int.TryParse(Console.ReadLine(), out runLength))
+            {
+                Console.WriteLine("Please Enter a valid numerical value!");
+                Console.WriteLine("Enter the length of the run:");
+            }
 
             Console.WriteLine("Enter the number of push ups");
-            int numPushUps = int.Parse(Console.ReadLine());
+            while (!int.TryParse(Console.ReadLine(), out numPushUps))
+            {
+                Console.WriteLine("Please Enter a valid numerical value!");
+                Console.WriteLine("Enter the number of push ups:");
+            }
 
             Console.WriteLine("Enter the number of squats");
-            int numSquats = int.Parse(Console.ReadLine());
+            while (!int.TryParse(Console.ReadLine(), out numPushUps))
+            {
+                Console.WriteLine("Please Enter a valid numerical value!");
+                Console.WriteLine("Enter the number of squats:");
+            }
 
             records.Add(new FitnessPlan(random.Next(),runLength, numPushUps, numSquats));
 
@@ -212,24 +258,42 @@ namespace SSDProject
         static void UpdateFitnessPlans(string priv)
         {
             List<FitnessPlan> records = ReadPlans();
-            int lengthOfRun;
-            int numberOfPushUps;
-            int numberOfSquats;
+            int lengthOfRun=0;
+            int numberOfPushUps=0;
+            int numberOfSquats=0;
+            int id=0;
+
             Console.WriteLine("Enter the ID of the plan you wish to update");
-            int Id = int.Parse(Console.ReadLine());
-            
-            if (records.Find(fp => fp.Id == Id) != null)
+            while (!int.TryParse(Console.ReadLine(), out id))
             {
-                FitnessPlan oldPlan =records.Find(fp => fp.Id == Id);
+                Console.WriteLine("Please Enter a valid numerical value!");
+                Console.WriteLine("Enter the ID of the plan you wish to update:");
+            }
+
+            if (records.Find(fp => fp.Id == id) != null)
+            {
+                FitnessPlan oldPlan =records.Find(fp => fp.Id == id);
 
                 Console.WriteLine("Enter the length of the new run currently:{0}", oldPlan.LengthOfRun);
-                lengthOfRun = int.Parse(Console.ReadLine());
+                while (!int.TryParse(Console.ReadLine(), out id))
+                {
+                    Console.WriteLine("Please Enter a valid numerical value!");
+                    Console.WriteLine("Enter the length of the new run currently:{0}", oldPlan.LengthOfRun);
+                }
 
                 Console.WriteLine("Enter the number of push ups currently:{0}", oldPlan.NumberOfPushUps);
-                numberOfPushUps = int.Parse(Console.ReadLine());
+                while (!int.TryParse(Console.ReadLine(), out numberOfPushUps))
+                {
+                    Console.WriteLine("Please Enter a valid numerical value!");
+                    Console.WriteLine("Enter the number of push ups currently:{0}", oldPlan.NumberOfPushUps);
+                }
 
                 Console.WriteLine("Enter the number of squats currently:{0}", oldPlan.NumberOfSquats);
-                numberOfSquats = int.Parse(Console.ReadLine());
+                while (!int.TryParse(Console.ReadLine(), out numberOfSquats))
+                {
+                    Console.WriteLine("Please Enter a valid numerical value!");
+                    Console.WriteLine("Enter the number of squats currently:{0}", oldPlan.NumberOfSquats);
+                }
 
                 FitnessPlan newPlan = new FitnessPlan(oldPlan.Id,lengthOfRun,numberOfPushUps,numberOfSquats);
 
@@ -248,12 +312,25 @@ namespace SSDProject
         static void DeletePlan(string priv)
         {
             var records = ReadPlans();
-
+            int id = 0;
+            
             Console.WriteLine("Enter the ID of the plan you wish to delete");
-            int Id = int.Parse(Console.ReadLine());
-            FitnessPlan entry = records.Find(fp => fp.Id == Id);
-            records.Remove(entry);
-            OverWritePlansToFile(records);
+            while (!int.TryParse(Console.ReadLine(), out id))
+            {
+                Console.WriteLine("Please Enter a valid numerical value!");
+                Console.WriteLine("Enter the ID of the plan you wish to delete");
+            }
+            if (records.Find(fp => fp.Id == id) != null)
+            {
+                FitnessPlan entry = records.Find(fp => fp.Id == id);
+                records.Remove(entry);
+                OverWritePlansToFile(records);
+            }
+            else
+            {
+                Console.WriteLine("Plan not found please try again");
+            }
+                
             Menu(priv);
         }
         static void WriteMembersToFile(List<Member> data)

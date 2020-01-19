@@ -14,7 +14,7 @@ namespace SSDProject
 
         private readonly string Password;
 
-        protected String ToFileFormat()
+        public String ToFileFormat()
         {
             return (string.Format("{0},{1},{2}", this.Id, this.Username, this.Password));
         }
